@@ -1,4 +1,4 @@
-QT += core gui widgets multimedia
+QT += core gui widgets multimedia network
 
 CONFIG += c++17
 TARGET = tryx-panorama-manager
