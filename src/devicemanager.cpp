@@ -20,7 +20,7 @@ void DeviceWorker::connectDevice(const QString &port) {
     if (port.isEmpty()) {
         auto detected = panorama::Device::find_device();
         if (!detected) {
-            emit error("Устройство не найдено. Проверьте подключение USB.");
+            emit error("Device not found. Check the USB connection.");
             return;
         }
         portStr = *detected;
@@ -30,7 +30,7 @@ void DeviceWorker::connectDevice(const QString &port) {
 
     device_ = std::make_unique<panorama::Device>(portStr);
     if (!device_->connect()) {
-        emit error(QString("Не удалось подключиться к %1").arg(QString::fromStdString(portStr)));
+        emit error(QString("Failed to connect to %1").arg(QString::fromStdString(portStr)));
         device_.reset();
         return;
     }
@@ -48,13 +48,13 @@ void DeviceWorker::disconnectDevice() {
 
 void DeviceWorker::doHandshake() {
     if (!device_ || !device_->is_connected()) {
-        emit error("Устройство не подключено");
+        emit error("Device not connected");
         return;
     }
 
     auto info = device_->handshake();
     if (!info) {
-        emit error("Handshake не удался");
+        emit error("Handshake failed");
         return;
     }
 
@@ -68,13 +68,13 @@ void DeviceWorker::doHandshake() {
 
 void DeviceWorker::setBrightness(int value) {
     if (!device_ || !device_->is_connected()) {
-        emit error("Устройство не подключено");
+        emit error("Device not connected");
         return;
     }
 
     auto resp = device_->set_brightness(value);
     if (!resp) {
-        emit error("Не удалось установить яркость");
+        emit error("Failed to set brightness");
         return;
     }
     emit brightnessSet(value);
@@ -93,7 +93,7 @@ void DeviceWorker::setScreenConfig(const QStringList &media, const QString &rati
                                    const QStringList &settingsBadges2,
                                    bool waterfallMode) {
     if (!device_ || !device_->is_connected()) {
-        emit error("Устройство не подключено");
+        emit error("Device not connected");
         return;
     }
 
@@ -138,7 +138,7 @@ void DeviceWorker::setScreenConfig(const QStringList &media, const QString &rati
 
     auto resp = device_->set_screen_config(config);
     if (!resp) {
-        emit error("Не удалось установить конфигурацию экрана");
+        emit error("Failed to set display configuration");
         return;
     }
 
@@ -261,13 +261,13 @@ void DeviceWorker::deleteMedia(const QStringList &files) {
     }
 
     if (!device_ || !device_->is_connected()) {
-        emit error("Устройство не подключено");
+        emit error("Device not connected");
         return;
     }
 
     auto resp = device_->delete_media(filenames);
     if (!resp) {
-        emit error("Не удалось удалить медиа файлы");
+        emit error("Failed to delete media files");
         return;
     }
 
@@ -280,7 +280,7 @@ void DeviceWorker::deleteMedia(const QStringList &files) {
 
 void DeviceWorker::uploadMedia(const QString &localPath) {
     if (!panorama::Adb::is_device_connected()) {
-        emit error("ADB устройство не найдено");
+        emit error("ADB device not found");
         return;
     }
 
@@ -331,13 +331,13 @@ void DeviceWorker::uploadMedia(const QString &localPath) {
 
 void DeviceWorker::refreshMediaList() {
     if (!panorama::Adb::is_device_connected()) {
-        emit error("ADB устройство не найдено");
+        emit error("ADB device not found");
         return;
     }
 
     auto files = panorama::Adb::list_media();
     if (!files) {
-        emit error("Не удалось получить список файлов");
+        emit error("Failed to retrieve file list");
         return;
     }
 
