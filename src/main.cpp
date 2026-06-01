@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 #include <QLoggingCategory>
 #include <cstdlib>
 #include "mainwindow.h"
@@ -15,6 +16,8 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("TRYX Panorama Manager");
     app.setOrganizationName("DXVSI");
+    app.setWindowIcon(QIcon(":/tryx-panorama.png"));
+    app.setDesktopFileName("tryx-panorama-manager");
 
     MainWindow window;
     window.show();

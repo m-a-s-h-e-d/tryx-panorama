@@ -1,5 +1,6 @@
 #include "traymanager.h"
 #include <QApplication>
+#include <QIcon>
 #include <QStyle>
 
 TrayManager::TrayManager(QObject *parent)
@@ -9,7 +10,10 @@ TrayManager::TrayManager(QObject *parent)
 
 void TrayManager::setupTray() {
     trayIcon_ = new QSystemTrayIcon(this);
-    trayIcon_->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    QIcon appIcon(":/tryx-panorama.png");
+    trayIcon_->setIcon(appIcon.isNull()
+                           ? QApplication::style()->standardIcon(QStyle::SP_ComputerIcon)
+                           : appIcon);
 
     trayMenu_ = new QMenu;
 
