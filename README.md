@@ -37,7 +37,7 @@ https://github.com/user-attachments/assets/f9baac04-fe28-4aeb-a8ea-eb2af37ff6cb
 - Brightness control (0-100)
 - Display settings: position, alignment, color, filter
 - Keepalive daemon for persistent display
-- Auto-detects device (scans /dev/ttyACM*)
+- Auto-detects device (scans /dev/ttyACM*)-linux-gui
 - System tray integration (KDE Plasma native)
 - Settings persistence between sessions
 - Async device communication (non-blocking GUI)
@@ -60,7 +60,7 @@ https://github.com/user-attachments/assets/f9baac04-fe28-4aeb-a8ea-eb2af37ff6cb
 ## Build
 
 ```bash
-git clone https://gitlab.com/dxvsi/tryx-panorama-linux.git
+git clone https://github.com/m-a-s-h-e-d/tryx-panorama.git
 cd tryx-panorama-linux
 qmake6
 make -j$(nproc)
