@@ -1,3 +1,7 @@
+# Forked repository note
+
+This is my fork of the original Linux GUI repository for controlling the TRYX Panorama AIO. It includes a lot of hard-coded things specifically for my system, but also include some bug fixes, and translation to English (as some text is originally in cyrillic)
+
 # TRYX Panorama Linux GUI
 
 Qt6 GUI application for managing TRYX Panorama AIO cooler displays on Linux.
