@@ -2,6 +2,7 @@
 #include <QFileInfo>
 #include <fstream>
 #include <filesystem>
+#include <iostream>
 
 // --- DeviceWorker ---
 
@@ -355,6 +356,11 @@ void DeviceWorker::sendKeepalive() {
         return;
     }
     device_->handshake();
+    if (!device_->is_connected()) {
+        std::cerr << "[keepalive] device fd closed after handshake; "
+                     "emitting disconnected\n";
+        emit disconnected();
+    }
 }
 
 void DeviceWorker::setRotation(int degrees) {

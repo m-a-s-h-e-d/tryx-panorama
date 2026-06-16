@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
@@ -39,6 +40,63 @@ const picojson::value& get_value(const picojson::value& v,
   auto it = obj.find(key);
   if (it == obj.end()) return null_val;
   return it->second;
+}
+
+// Write all bytes to the (non-blocking) serial fd, polling for writability
+// when the kernel buffer is momentarily full. The port is opened O_NONBLOCK,
+// so write() can legitimately return EAGAIN or a short count while the device
+// is simply busy -- that must NOT be mistaken for a disconnect.
+// Returns:  1 = all bytes written
+//           0 = transient back-pressure (device still present; caller should
+//               drop the command but keep the connection)
+//          -1 = fatal error (real disconnect; caller should close the fd)
+int write_all(int fd, const uint8_t* data, size_t size, int total_timeout_ms) {
+  size_t off = 0;
+  auto start = std::chrono::steady_clock::now();
+  while (off < size) {
+    ssize_t n = write(fd, data + off, size - off);
+    if (n > 0) {
+      off += static_cast<size_t>(n);
+      continue;
+    }
+    if (n < 0 && errno == EINTR) continue;
+    if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::steady_clock::now() - start)
+                         .count();
+      int remaining = total_timeout_ms - static_cast<int>(elapsed);
+      if (remaining <= 0) return 0;  // buffer never drained -- transient
+      struct pollfd pfd;
+      pfd.fd = fd;
+      pfd.events = POLLOUT;
+      pfd.revents = 0;
+      int pr = poll(&pfd, 1, remaining);
+      if (pr < 0 && errno == EINTR) continue;
+      if (pr <= 0) return 0;  // poll timeout/error -- transient, stay connected
+      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) return -1;  // gone
+      continue;  // POLLOUT ready -- retry the write
+    }
+    // A non-EAGAIN error. On a CDC-ACM port write() can return EIO (and the
+    // odd other transient errno) under heavy USB-bus contention -- e.g. when
+    // Steam spins up a pile of devices/threads -- WITHOUT the board having
+    // actually gone away (1-10.6 never re-enumerates in the kernel log). Only
+    // genuine-removal errnos are fatal; everything else gets a brief backoff
+    // and retry within the timeout budget, then degrades to "transient" rather
+    // than tearing down a perfectly live connection.
+    if (errno == ENODEV || errno == ENXIO || errno == ESHUTDOWN ||
+        errno == EBADF || errno == EPIPE) {
+      return -1;  // device genuinely gone -- caller should close the fd
+    }
+    {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::steady_clock::now() - start)
+                         .count();
+      if (elapsed >= total_timeout_ms) return 0;  // transient; skip, stay up
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      continue;  // retry the write
+    }
+  }
+  return 1;
 }
 
 }  // namespace
@@ -236,10 +294,21 @@ std::optional<Response> Device::send_command(const std::string& request_state,
     std::cout << std::dec << "\n";
   }
 
-  ssize_t written = write(fd_, frame.data(), frame.size());
-  if (written != static_cast<ssize_t>(frame.size())) {
+  int wr = write_all(fd_, frame.data(), frame.size(), 1000);
+  if (wr < 0) {
+    // Genuine removal (ENODEV/ENXIO/...) -- the device actually went away.
+    // Logged unconditionally so the journal shows the real cause of a drop.
+    std::cerr << "[device] write_all reported fatal error (" << strerror(errno)
+              << "); disconnecting\n";
+    disconnect();
+    return std::nullopt;
+  }
+  if (wr == 0) {
+    // Transient back-pressure: the device is busy but still connected. Skip
+    // this command rather than tearing down the connection (which would
+    // trigger a spurious disconnect/reconnect cycle).
     if (verbose_) {
-      std::cerr << "Write failed\n";
+      std::cerr << "Write would block (device busy); skipping command\n";
     }
     return std::nullopt;
   }
